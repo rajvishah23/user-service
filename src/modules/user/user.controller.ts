@@ -2,6 +2,7 @@ import { Response } from "express"
 import { prisma } from "../../config/prisma"
 import { AuthRequest } from "../../middlewares/auth.middleware"
 import redisClient from "../../config/redis"
+import { publishMessage } from '../../config/rabbitmq'
 
 export const getMe = async (req: AuthRequest, res: Response) => {
   if (!req.user) {
@@ -113,9 +114,11 @@ export const deleteMe = async (req: AuthRequest, res: Response) => {
 
     await redisClient.del(`refreshToken:${req.user.id}`)
 
+    // Publish event to RabbitMQ
+    await publishMessage('user.deleted', { userId: req.user.id })
+
     return res.status(204).send()
   } catch (error) {
     return res.status(500).json({ message: "Server error" })
   }
 }
-
